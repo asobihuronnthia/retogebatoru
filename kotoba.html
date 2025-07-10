@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>言葉バトル</title>
+  <style>
+    body {
+      background-color: black;
+      color: white;
+      font-family: monospace;
+      text-align: center;
+      padding: 2rem;
+    }
+    input {
+      padding: 0.5rem;
+      font-size: 1rem;
+      margin: 0.5rem;
+      width: 200px;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      background: white;
+      color: black;
+      border: none;
+      cursor: pointer;
+      margin-top: 1rem;
+    }
+    .result {
+      margin-top: 2rem;
+      font-size: 1.2rem;
+      white-space: pre-line;
+      opacity: 0;
+      transition: opacity 1s ease-in-out;
+    }
+    .show {
+      opacity: 1;
+    }
+    #battle-visual {
+      margin-top: 2rem;
+      font-size: 2rem;
+      animation: blink 0.3s step-start infinite;
+    }
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+    .hp-bar {
+      width: 200px;
+      height: 20px;
+      background-color: #444;
+      margin: 10px auto;
+      border: 2px solid white;
+    }
+    .hp-fill {
+      height: 100%;
+      background-color: lime;
+      width: 100%;
+      transition: width 1s ease-in-out;
+    }
+    #damage-text {
+      font-size: 2rem;
+      color: red;
+      animation: flash 0.5s ease-in-out 2;
+      margin-top: 1rem;
+    }
+    @keyframes flash {
+      0% { opacity: 1; }
+      50% { opacity: 0; }
+      100% { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <h1>言葉バトル</h1>
+  <div>
+    <input type="text" id="word1" placeholder="言葉１">
+    <input type="text" id="word2" placeholder="言葉２">
+    <br>
+    <button onclick="battle()">バトル！</button>
+  </div>
+
+  <div class="hp-bar"><div id="hp1" class="hp-fill"></div></div>
+  <div class="hp-bar"><div id="hp2" class="hp-fill"></div></div>
+
+  <div id="battle-visual"></div>
+  <div id="damage-text"></div>
+  <div class="result" id="result"></div>
+
+  <audio id="start-sound" src="https://freesound.org/data/previews/341/341695_3248244-lq.mp3"></audio>
+  <audio id="hit-sound" src="https://freesound.org/data/previews/170/170144_2398400-lq.mp3"></audio>
+  <audio id="win-sound" src="https://freesound.org/data/previews/331/331912_3248244-lq.mp3"></audio>
+  <audio id="draw-sound" src="https://freesound.org/data/previews/146/146434_2615117-lq.mp3"></audio>
+
+  <script>
+    function calculateStats(word) {
+      let atk = 0, def = 0, spd = 0;
+      for (let i = 0; i < word.length; i++) {
+        const code = word.charCodeAt(i);
+        atk += (code % 10);
+        def += Math.floor(code / 10) % 10;
+        spd += Math.floor(code / 100) % 10;
+      }
+
+      atk = Math.round(atk * (0.9 + Math.random() * 0.2));
+      def = Math.round(def * (0.9 + Math.random() * 0.2));
+      spd = Math.round(spd * (0.9 + Math.random() * 0.2));
+
+      const critical = Math.random() < 0.05;
+      if (critical) atk *= 2;
+
+      const block = Math.random() < 0.05;
+      if (block) def *= 2;
+
+      return { atk, def, spd, critical, block };
+    }
+
+    function delay(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function updateHPBars(hp1, hp2) {
+      document.getElementById('hp1').style.width = `${hp1}%`;
+      document.getElementById('hp2').style.width = `${hp2}%`;
+    }
+
+    function showDamage(text) {
+      const dmg = document.getElementById('damage-text');
+      dmg.innerText = text;
+      dmg.style.display = 'block';
+      setTimeout(() => { dmg.innerText = ''; }, 1500);
+    }
+
+    async function battle() {
+      const word1 = document.getElementById('word1').value;
+      const word2 = document.getElementById('word2').value;
+      const visual = document.getElementById('battle-visual');
+      const resultBox = document.getElementById('result');
+      if (!word1 || !word2) return;
+
+      visual.innerText = 'バトル開始...';
+      resultBox.classList.remove('show');
+      resultBox.innerText = '';
+      document.getElementById('start-sound').play();
+      updateHPBars(100, 100);
+
+      await delay(1000);
+      visual.innerText = `${word1} vs ${word2}`;
+
+      const stats1 = calculateStats(word1);
+      const stats2 = calculateStats(word2);
+
+      await delay(2000);
+      document.getElementById('hit-sound').play();
+      visual.innerText = '攻撃中...';
+      await delay(1000);
+
+      let log = `【${word1}】\n攻撃力: ${stats1.atk}${stats1.critical ? '（クリティカル!!）' : ''} 防御力: ${stats1.def}${stats1.block ? '（ブロック!!）' : ''} スピード: ${stats1.spd}\n`;
+      log += `【${word2}】\n攻撃力: ${stats2.atk}${stats2.critical ? '（クリティカル!!）' : ''} 防御力: ${stats2.def}${stats2.block ? '（ブロック!!）' : ''} スピード: ${stats2.spd}\n\n`;
+
+      let result = '';
+      let hp1 = 100;
+      let hp2 = 100;
+      let damage;
+
+      if (stats1.spd > stats2.spd) {
+        damage = stats1.atk - stats2.def;
+        if (damage > 0) {
+          hp2 = Math.max(0, 100 - damage * 5);
+          result = `${word1} の勝ち！（先攻）`;
+          showDamage(`ガーン！-${damage * 5}HP`);
+          document.getElementById('win-sound').play();
+        } else {
+          damage = stats2.atk - stats1.def;
+          if (damage > 0) {
+            hp1 = Math.max(0, 100 - damage * 5);
+            result = `${word2} の勝ち！（後攻）`;
+            showDamage(`ガーン！-${damage * 5}HP`);
+            document.getElementById('win-sound').play();
+          } else {
+            result = 'MISS! 引き分け';
+            showDamage('MISS!');
+            document.getElementById('draw-sound').play();
+          }
+        }
+      } else if (stats2.spd > stats1.spd) {
+        damage = stats2.atk - stats1.def;
+        if (damage > 0) {
+          hp1 = Math.max(0, 100 - damage * 5);
+          result = `${word2} の勝ち！（先攻）`;
+          showDamage(`ガーン！-${damage * 5}HP`);
+          document.getElementById('win-sound').play();
+        } else {
+          damage = stats1.atk - stats2.def;
+          if (damage > 0) {
+            hp2 = Math.max(0, 100 - damage * 5);
+            result = `${word1} の勝ち！（後攻）`;
+            showDamage(`ガーン！-${damage * 5}HP`);
+            document.getElementById('win-sound').play();
+          } else {
+            result = 'MISS! 引き分け';
+            showDamage('MISS!');
+            document.getElementById('draw-sound').play();
+          }
+        }
+      } else {
+        result = 'スピードが同じ！引き分け';
+        showDamage('MISS!');
+        document.getElementById('draw-sound').play();
+      }
+
+      updateHPBars(hp1, hp2);
+      visual.innerText = '結果発表！';
+      await delay(1000);
+      resultBox.innerText = log + result;
+      resultBox.classList.add('show');
+      visual.innerText = '';
+    }
+  </script>
+</body>
+</html>
