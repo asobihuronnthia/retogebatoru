@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>レトロゲームデイリーミッションくじ</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 600px; margin: 2em auto; padding: 1em; background:#f9f9f9; }
+  button { font-size: 1.2em; padding: 0.5em 1em; margin: 1em 0; }
+  #mission { margin: 1em 0; font-size: 1.3em; background: #fff; padding: 1em; border-radius: 8px; box-shadow: 0 0 5px #ccc; }
+  #points { font-weight: bold; margin-top: 1em; }
+  #message { margin-top: 1em; font-size: 1.2em; color: green; }
+  #uploadedImage { max-width: 100%; margin-top: 1em; border-radius: 8px; }
+</style>
+</head>
+<body>
+
+<h1>レトロゲームデイリーミッションくじ</h1>
+
+<button id="drawBtn">ミッションを引く</button>
+
+<div id="mission">ここにミッションが表示されます</div>
+
+<form id="uploadForm">
+  <label>達成画像をアップロードしてポイントGET！</label><br />
+  <input type="file" accept="image/*" id="imageInput" required />
+  <button type="submit">アップロード</button>
+</form>
+
+<div id="points">現在のポイント: 0</div>
+<div id="message"></div>
+<img id="uploadedImage" alt="" />
+
+<script>
+  const missions = [
+    "タイトル画面のデモを最後まで見る",
+    "ゲーム起動後、無操作で30秒放置",
+    "敵に1回だけわざと接触してダメージを受ける",
+    "ポーズ画面を3回開く",
+    "1ステージの開始から1分間、ジャンプだけで遊ぶ",
+    "画面の隅っこで30秒じっとする",
+    "ゲームオーバー画面を1回見る",
+    "スタートボタンを3回連続で押す",
+    "取れるアイテムのうち、1つだけ取る",
+    "ポーズ→再開を5回繰り返す"
+  ];
+
+  const drawBtn = document.getElementById('drawBtn');
+  const missionDiv = document.getElementById('mission');
+  const uploadForm = document.getElementById('uploadForm');
+  const imageInput = document.getElementById('imageInput');
+  const pointsDiv = document.getElementById('points');
+  const messageDiv = document.getElementById('message');
+  const uploadedImage = document.getElementById('uploadedImage');
+
+  // ポイントはlocalStorageに保存（ブラウザ内のみ）
+  function getPoints() {
+    return Number(localStorage.getItem('points') || '0');
+  }
+  function setPoints(p) {
+    localStorage.setItem('points', p);
+    pointsDiv.textContent = `現在のポイント: ${p}`;
+  }
+
+  // 初期ポイント表示
+  setPoints(getPoints());
+
+  // ミッションをランダムに表示
+  drawBtn.onclick = () => {
+    const idx = Math.floor(Math.random() * missions.length);
+    missionDiv.textContent = `🎯 ミッション: ${missions[idx]}`;
+    messageDiv.textContent = '';
+    uploadedImage.src = '';
+    imageInput.value = '';
+  };
+
+  // 画像アップロードでポイント加算
+  uploadForm.onsubmit = (e) => {
+    e.preventDefault();
+    const file = imageInput.files[0];
+    if (!file) {
+      alert('画像を選んでください');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      uploadedImage.src = reader.result;
+      // ポイント加算
+      let pts = getPoints();
+      pts++;
+      setPoints(pts);
+      if (pts >= 5) {
+        messageDiv.textContent = '🎉 おめでとう！ポイントが5を超えました！';
+      } else {
+        messageDiv.textContent = `ポイントが1増えました！あと${5 - pts}でお祝いメッセージです。`;
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+</script>
+
+</body>
+</html>
